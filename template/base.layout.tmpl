@@ -153,9 +153,21 @@
             })
         }
 
+        // {{with .Error}}
+        //     notify("{{.}}", "error");
+        // {{end}}
+
+        // {{with .Flash}}
+        // notify("{{.}}", "success");
+        // {{end}}
+
+        // {{with .Warning }}
+        // notify("{{.}}", "warning");
+        // {{end}}
+
         function Prompt() {
             let toast = function (c) {
-                const{
+                const {
                     msg = '',
                     icon = 'success',
                     position = 'top-end',
@@ -217,22 +229,21 @@
                     title = "",
                 } = c;
 
-                const { value: result } = await Swal.fire({
+                const {value: result} = await Swal.fire({
                     title: title,
                     html: msg,
                     backdrop: false,
                     focusConfirm: false,
                     showCancelButton: true,
                     willOpen: () => {
-                        const elem = document.getElementById("reservation-dates-modal");
-                        const rp = new DateRangePicker(elem, {
-                            format: 'yyyy-mm-dd',
-                            showOnFocus: true,
-                        })
+                        if (c.willOpen !== undefined) {
+                            c.willOpen();
+                        }
                     },
                     didOpen: () => {
-                        document.getElementById("start").removeAttribute("disabled");
-                        document.getElementById("end").removeAttribute("disabled");
+                        if (c.didOpen !== undefined) {
+                            c.didOpen();
+                        }
                     },
                     preConfirm: () => {
                         return [
@@ -243,16 +254,16 @@
                 })
 
                 if (result) {
-                    if(result.dismiss !==Swal.DismissReason.cancel){
-                        if(result.value !==""){
-                            if(c.callback !==undefined){
-                             c.callback(result)
+                    if (result.dismiss !== Swal.DismissReason.cancel) {
+                        if (result.value !== "") {
+                            if (c.callback !== undefined) {
+                                c.callback(result);
                             }
-                        }else{
-                            c.callback(false)
+                        } else {
+                            c.callback(false);
                         }
-                    }else{
-                        c.callback(false)
+                    } else {
+                        c.callback(false);
                     }
                 }
             }
