@@ -3,19 +3,26 @@ package handlers
 import (
 	"fmt"
 	"github/somyaranjan99/basic-go-project/cmd/web/middleware/forms"
+	"github/somyaranjan99/basic-go-project/internal/condriver"
+	"github/somyaranjan99/basic-go-project/internal/helpers"
+	"github/somyaranjan99/basic-go-project/internal/repository"
+	"github/somyaranjan99/basic-go-project/internal/repository/dbrepo"
+	"github/somyaranjan99/basic-go-project/internal/reservationtypes"
 	"github/somyaranjan99/basic-go-project/pkg/config"
 	"github/somyaranjan99/basic-go-project/pkg/models"
 	"github/somyaranjan99/basic-go-project/pkg/render"
 	"log"
 	"net/http"
+	"time"
 )
 
 type Repository struct {
 	Repo *config.AppConfig
+	Db   repository.DatabaseRepo
 }
 
-func NewRepo(a *config.AppConfig) *Repository {
-	return &Repository{Repo: a}
+func NewRepo(a *config.AppConfig, db *condriver.DB) *Repository {
+	return &Repository{Repo: a, Db: dbrepo.NewRepositoryDBHandler(a, db.SQL)}
 }
 
 func (repo *Repository) Home(w http.ResponseWriter, r *http.Request) {
@@ -75,9 +82,11 @@ func (repo *Repository) PostReservation(w http.ResponseWriter, r *http.Request) 
 
 	err := r.ParseForm()
 	if err != nil {
+		helpers.ServerError(w, err)
 		log.Println(err)
 		return
 	}
+	//now := time.Now()
 	reservation := &models.Reservation{
 		FirstName: r.Form.Get("first_name"),
 		LastName:  r.Form.Get("last_name"),
@@ -102,12 +111,33 @@ func (repo *Repository) PostReservation(w http.ResponseWriter, r *http.Request) 
 		})
 		return
 	}
+	now := time.Now()
+	startDate := now.Truncate(24 * time.Hour)
+	endDate := now.AddDate(0, 0, 1).Truncate(24 * time.Hour)
+	postReservation := reservationtypes.Reservation{
+		FirstName: reservation.FirstName,
+		LastName:  reservation.LastName,
+		Email:     reservation.Email,
+		Phone:     reservation.Phone,
+		StartDate: startDate,
+		EndDate:   endDate,
+		RoomID:    1,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	res, err := repo.Db.BookReservation(&postReservation)
+	if err != nil {
+		fmt.Errorf(err.Error())
+	}
+	fmt.Print(res)
+	//repo.(&postReservation)
 	repo.Repo.Session.Put(r.Context(), "reservation", reservation)
 	http.Redirect(w, r, "/reservation-summary", http.StatusSeeOther)
 }
 func (repo *Repository) ReservationSummary(w http.ResponseWriter, r *http.Request) {
 	reservation, ok := repo.Repo.Session.Get(r.Context(), "reservation").(models.Reservation)
 	if !ok {
+		repo.Repo.ErrorLog.Println("can't get item from session")
 		log.Println("can't get item from session")
 		repo.Repo.Session.Put(r.Context(), "error", "Can't get reservation from session")
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)

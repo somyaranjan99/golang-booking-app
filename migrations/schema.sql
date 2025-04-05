@@ -38,7 +38,7 @@ CREATE TABLE `reservations` (
   KEY `reservations_email_idx` (`email`),
   KEY `reservations_last_name_idx` (`last_name`),
   CONSTRAINT `reservations_rooms_id_fk` FOREIGN KEY (`room_id`) REFERENCES `rooms` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -69,7 +69,7 @@ CREATE TABLE `room_restrictions` (
   `start_date` date NOT NULL,
   `end_date` date NOT NULL,
   `room_id` int NOT NULL,
-  `reservation_id` int NOT NULL,
+  `reservation_id` int DEFAULT NULL,
   `restriction_id` int NOT NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
@@ -144,4 +144,4 @@ CREATE TABLE `users` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-04-02 12:19:09
+-- Dump completed on 2025-04-05 17:37:21
