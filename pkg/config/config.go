@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github/somyaranjan99/basic-go-project/pkg/models"
 	"html/template"
 	"log"
 
@@ -13,4 +14,5 @@ type AppConfig struct {
 	Session       *scs.Session
 	Infolog       *log.Logger
 	ErrorLog      *log.Logger
+	MailChan      chan models.MailData
 }
