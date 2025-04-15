@@ -16,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Repository struct {
@@ -269,4 +271,159 @@ func (repo *Repository) ChooseRoom(w http.ResponseWriter, r *http.Request) {
 	// fmt.Println(res)
 
 	http.Redirect(w, r, "/make-reservation", http.StatusSeeOther)
+}
+func (repo *Repository) Login(w http.ResponseWriter, r *http.Request) {
+	data := make(map[string]interface{})
+	data["user_login"] = data
+
+	render.RenderTemplate(w, r, "login.page.tmpl", repo.Repo, &models.TemplateData{
+		Data: data,
+		Form: forms.New(nil),
+	})
+}
+func (repo *Repository) PostLogin(w http.ResponseWriter, r *http.Request) {
+	// fmt.Println("post login data")
+	//render.RenderTemplate(w, r, "login.page.tmpl", repo.Repo, &models.TemplateData{})
+	err := r.ParseForm()
+	if err != nil {
+		repo.Repo.Session.Put(r.Context(), "error", "can't parse form!")
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+	user := reservationtypes.User{
+		Email:    r.Form.Get("email"),
+		Password: r.Form.Get("password"),
+	}
+	form := forms.New(&r.PostForm)
+	form.Has("email", r)
+	form.Has("password", r)
+	form.IsValidEmail("email")
+	form.MinLength("password", 6, r)
+	// fmt.Println(form.Errors)
+	if !form.Valid() {
+		data := make(map[string]interface{})
+		data["user_login"] = user
+		render.RenderTemplate(w, r, "login.page.tmpl", repo.Repo, &models.TemplateData{
+			Data: data,
+			Form: form,
+		})
+		return
+	}
+	isAuth, err := repo.Db.IsAuthenticatedUser(user.Email, user.Password)
+	if err != nil {
+		repo.Repo.Session.Put(r.Context(), "error", "Internal server Error")
+		http.Redirect(w, r, "/", http.StatusInternalServerError)
+		return
+	}
+	if !isAuth {
+		repo.Repo.Session.Put(r.Context(), "error", "Internal server Error")
+		http.Redirect(w, r, "/", http.StatusInternalServerError)
+		return
+	}
+
+	repo.Repo.Session.Put(r.Context(), "success", "Loged in success")
+	repo.Repo.Session.Put(r.Context(), "user_login", isAuth)
+	render.RenderTemplate(w, r, "/", repo.Repo, &models.TemplateData{})
+}
+func (repo *Repository) UserSignup(w http.ResponseWriter, r *http.Request) {
+	data := make(map[string]interface{})
+	data["user_signup"] = reservationtypes.User{}
+	render.RenderTemplate(w, r, "/signup.page.tmpl", repo.Repo, &models.TemplateData{
+		Data: data,
+		Form: forms.New(nil),
+	})
+}
+func (repo *Repository) PostUserSignup(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		repo.Repo.Session.Put(r.Context(), "error", "can't parse form!")
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+	email := r.Form.Get("email")
+	res, _ := repo.Db.GetUserByEmail(email)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	repo.Repo.Session.Put(r.Context(), "error", "Internal server error")
+	// 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+	// 	return
+	// }
+	if res == true {
+		repo.Repo.Session.Put(r.Context(), "error", "User already exist")
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+	fmt.Println(res, "GetUserByEmail")
+	form := forms.New(&r.PostForm)
+	form.Has("first_name", r)
+	form.Has("last_name", r)
+	form.Has("email", r)
+	form.Has("password", r)
+	form.IsValidEmail("email")
+	form.MinLength("password", 6, r)
+	user := reservationtypes.User{}
+	if !form.Valid() {
+
+		data := make(map[string]interface{})
+		data["user_signup"] = user
+		repo.Repo.Session.Put(r.Context(), "error", "Please enter all the fields")
+		render.RenderTemplate(w, r, "/user/signup", repo.Repo, &models.TemplateData{
+			Data: data,
+			Form: form,
+		})
+		return
+	}
+	password, err := bcrypt.GenerateFromPassword([]byte(r.Form.Get("password")), 12)
+
+	if err != nil {
+		fmt.Println(err)
+		data := make(map[string]interface{})
+		data["user_signup"] = user
+		repo.Repo.Session.Put(r.Context(), "error", "internal server error")
+		render.RenderTemplate(w, r, "/user/signup", repo.Repo, &models.TemplateData{
+			Data: data,
+			Form: form,
+		})
+		return
+	}
+	access_level, _ := strconv.Atoi(r.Form.Get("access_level"))
+	fmt.Println(access_level, "access_level")
+
+	user = reservationtypes.User{
+		FirstName:   r.Form.Get("first_name"),
+		LastName:    r.Form.Get("last_name"),
+		Email:       email,
+		Password:    string(password),
+		AccessLevel: access_level,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+	res, err = repo.Db.SignupUser(&user)
+	fmt.Println(err, "SignupUser")
+
+	if err != nil {
+		data := make(map[string]interface{})
+		data["user_signup"] = user
+		repo.Repo.Session.Put(r.Context(), "error", "internal server error")
+		render.RenderTemplate(w, r, "/user/signup", repo.Repo, &models.TemplateData{
+			Data: data,
+			Form: form,
+		})
+		return
+	}
+	if !res {
+		data := make(map[string]interface{})
+		data["user_signup"] = user
+		repo.Repo.Session.Put(r.Context(), "error", "internal server error")
+		render.RenderTemplate(w, r, "/user/signup", repo.Repo, &models.TemplateData{
+			Data: data,
+			Form: form,
+		})
+		return
+	}
+
+	repo.Repo.Session.Put(r.Context(), "success", "User sign up success")
+	http.Redirect(w, r, "/", http.StatusCreated)
+	return
+
 }

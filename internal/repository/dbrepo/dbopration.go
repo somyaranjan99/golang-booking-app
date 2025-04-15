@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github/somyaranjan99/basic-go-project/internal/reservationtypes"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 func (m *RepositoryDBHandler) AllUsers() bool {
@@ -65,4 +67,64 @@ func (m *RepositoryDBHandler) GetRoomByID(roomid int) (reservationtypes.Room, er
 		return room, err
 	}
 	return room, nil
+}
+
+func (m *RepositoryDBHandler) IsAuthenticatedUser(email, password string) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	rows := m.Db.QueryRowContext(ctx, `SELECT Id
+															first_name,
+															last_name,
+															email,password,
+															access_level FROM users WHERE email=? and password=?`, email, password)
+	var user reservationtypes.User
+	err := rows.Scan(&user.ID, &user.FirstName, &user.LastName, &user.Email, &user.Password, &user.AccessLevel)
+	if err != nil {
+		return false, err
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+
+}
+
+func (m *RepositoryDBHandler) SignupUser(user *reservationtypes.User) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// 	id int AI PK
+	// first_name varchar(255)
+	// last_name varchar(255)
+	// email varchar(255)
+	// password varchar(60)
+	// access_level int
+	// created_at datetime
+	// updated_at datetime
+	res, err := m.Db.ExecContext(ctx, `INSERT INTO users
+	(first_name,last_name,email,password,access_level,created_at,updated_at) VALUES
+	(?,?,?,?,?,?,?)`, user.FirstName, user.LastName, user.Email, user.Password, user.AccessLevel, user.CreatedAt, user.UpdatedAt)
+	if err != nil {
+		return false, err
+	}
+	fmt.Println(res)
+	return true, nil
+
+}
+func (m *RepositoryDBHandler) GetUserByEmail(email string) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	row := m.Db.QueryRowContext(ctx, "SELECT email FROM users WHERE email=?", email)
+
+	user := reservationtypes.User{}
+
+	err := row.Scan(&user.Email)
+	if err != nil {
+		return false, err
+	}
+	if user.Email == "" {
+		return false, nil
+	}
+	return true, nil
 }

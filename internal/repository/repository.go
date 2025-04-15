@@ -10,4 +10,7 @@ type DatabaseRepo interface {
 	BookReservation(*reservationtypes.Reservation) (string, error)
 	SearchAvailabilityForAllRooms(start_date, end_date time.Time) ([]reservationtypes.Room, error)
 	GetRoomByID(id int) (reservationtypes.Room, error)
+	IsAuthenticatedUser(string, string) (bool, error)
+	SignupUser(*reservationtypes.User) (bool, error)
+	GetUserByEmail(string) (bool, error)
 }

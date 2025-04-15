@@ -1,6 +1,8 @@
 module github/somyaranjan99/basic-go-project
 
-go 1.22.4
+go 1.23.0
+
+toolchain go1.23.8
 
 require (
 	github.com/go-chi/chi v1.5.5
@@ -15,4 +17,5 @@ require (
 	github.com/go-sql-driver/mysql v1.9.1 // indirect
 	github.com/toorop/go-dkim v0.0.0-20201103131630-e1cd1a0a5208 // indirect
 	github.com/xhit/go-simple-mail/v2 v2.16.0 // indirect
+	golang.org/x/crypto v0.37.0 // indirect
 )
